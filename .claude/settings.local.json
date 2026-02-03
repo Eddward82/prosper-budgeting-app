@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(assets/icon.png)",
+      "Bash(assets/splash.png)",
+      "Bash(assets/adaptive-icon.png)",
+      "Bash(assets/favicon.png)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(npx expo start:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(timeout 10 cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

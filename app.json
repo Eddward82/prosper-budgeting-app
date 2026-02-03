@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Prosper",
+    "slug": "prosper-budget-planner",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F7FA"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.prosper.budgetplanner"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F5F7FA"
+      },
+      "package": "com.prosper.budgetplanner",
+      "versionCode": 6,
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.683993869050-bhp109ibd5t2j45ll4l826r67hsm3cih"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "48b19e47-dd8e-4b16-8e12-047999906afd"
+      }
+    }
+  }
+}

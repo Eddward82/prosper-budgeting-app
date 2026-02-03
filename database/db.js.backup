@@ -1,0 +1,459 @@
+import * as SQLite from 'expo-sqlite';
+import { createTables, seedDefaultCategories, migrateExistingTables } from './schema';
+
+let db = null;
+
+export const initDatabase = async () => {
+  if (!db) {
+    try {
+      db = await SQLite.openDatabaseAsync('budget.db');
+      await createTables(db);
+      await migrateExistingTables(db);
+      await seedDefaultCategories(db);
+    } catch (error) {
+      console.error('Database initialization error:', error);
+      throw error;
+    }
+  }
+  return db;
+};
+
+export const getDatabase = async () => {
+  if (!db) {
+    return await initDatabase();
+  }
+  return db;
+};
+
+export const getAllCategories = () => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'SELECT * FROM categories ORDER BY name',
+        [],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const updateCategoryBudget = (id, budget) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'UPDATE categories SET monthly_budget = ? WHERE id = ?',
+        [budget, id],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const addTransaction = (type, categoryId, amount, date, tags = null, receiptUri = null, isRecurring = 0, frequency = null, nextRunDate = null) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'INSERT INTO transactions (type, category_id, amount, date, tags, receipt_uri, is_recurring, frequency, next_run_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [type, categoryId, amount, date, tags, receiptUri, isRecurring, frequency, nextRunDate],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const getAllTransactions = () => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT t.*, c.name as category_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         ORDER BY t.date DESC`,
+        [],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const getTransactionsByMonth = (year, month) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT t.*, c.name as category_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.date LIKE ?
+         ORDER BY t.date DESC`,
+        [`${monthStr}%`],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const deleteTransaction = (id) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'DELETE FROM transactions WHERE id = ?',
+        [id],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const clearAllData = () => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql('DELETE FROM transactions', [], () => {
+        tx.executeSql('DELETE FROM categories', [], () => {
+          seedDefaultCategories(database);
+          resolve();
+        });
+      });
+    });
+  });
+};
+
+export const getDashboardData = (year, month) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const transactions = await getTransactionsByMonth(year, month);
+      const categories = await getAllCategories();
+
+      const totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalExpenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const expensesByCategory = {};
+      transactions
+        .filter(t => t.type === 'expense')
+        .forEach(t => {
+          if (!expensesByCategory[t.category_id]) {
+            expensesByCategory[t.category_id] = {
+              categoryId: t.category_id,
+              categoryName: t.category_name || 'Other',
+              amount: 0
+            };
+          }
+          expensesByCategory[t.category_id].amount += t.amount;
+        });
+
+      const totalBudget = categories.reduce((sum, cat) => sum + cat.monthly_budget, 0);
+      const remainingBudget = totalBudget - totalExpenses;
+
+      resolve({
+        totalIncome,
+        totalExpenses,
+        totalBudget,
+        remainingBudget,
+        expensesByCategory: Object.values(expensesByCategory),
+        categories
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+// Savings Goals Functions
+export const getAllSavingsGoals = () => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'SELECT * FROM savings_goals ORDER BY id DESC',
+        [],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const addSavingsGoal = (name, targetAmount, deadline = null) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'INSERT INTO savings_goals (name, target_amount, current_amount, deadline) VALUES (?, ?, 0, ?)',
+        [name, targetAmount, deadline],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const updateGoalProgress = (id, amount) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'UPDATE savings_goals SET current_amount = current_amount + ? WHERE id = ?',
+        [amount, id],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const deleteGoal = (id) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'DELETE FROM savings_goals WHERE id = ?',
+        [id],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+// App Settings Functions
+export const getSetting = (key) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'SELECT value FROM app_settings WHERE key = ?',
+        [key],
+        (_, { rows }) => resolve(rows._array.length > 0 ? rows._array[0].value : null),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const setSetting = (key, value) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)',
+        [key, value],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+// Transaction Filter Functions
+export const getTransactionsByDateRange = (startDate, endDate) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT t.*, c.name as category_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.date >= ? AND t.date <= ?
+         ORDER BY t.date DESC`,
+        [startDate, endDate],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const getTransactionsByCategory = (categoryId) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT t.*, c.name as category_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.category_id = ?
+         ORDER BY t.date DESC`,
+        [categoryId],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const getTransactionsByTag = (tag) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT t.*, c.name as category_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.tags LIKE ?
+         ORDER BY t.date DESC`,
+        [`%${tag}%`],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+// Daily/Weekly Spending
+export const getSpendingByDateRange = (startDate, endDate) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT SUM(amount) as total
+         FROM transactions
+         WHERE type = 'expense' AND date >= ? AND date <= ?`,
+        [startDate, endDate],
+        (_, { rows }) => resolve(rows._array[0].total || 0),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+// Recurring Transactions
+export const getRecurringTransactions = () => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT t.*, c.name as category_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.is_recurring = 1
+         ORDER BY t.date DESC`,
+        [],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const processRecurringTransactions = () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const recurring = await getRecurringTransactions();
+      const today = new Date().toISOString().split('T')[0];
+      const database = getDatabase();
+
+      for (const trans of recurring) {
+        if (trans.next_run_date && trans.next_run_date <= today) {
+          await addTransaction(
+            trans.type,
+            trans.category_id,
+            trans.amount,
+            today,
+            trans.tags,
+            null,
+            1,
+            trans.frequency,
+            calculateNextRunDate(today, trans.frequency)
+          );
+
+          database.transaction((tx) => {
+            tx.executeSql(
+              'UPDATE transactions SET next_run_date = ? WHERE id = ?',
+              [calculateNextRunDate(today, trans.frequency), trans.id]
+            );
+          });
+        }
+      }
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+const calculateNextRunDate = (currentDate, frequency) => {
+  const date = new Date(currentDate);
+  if (frequency === 'daily') {
+    date.setDate(date.getDate() + 1);
+  } else if (frequency === 'weekly') {
+    date.setDate(date.getDate() + 7);
+  } else if (frequency === 'monthly') {
+    date.setMonth(date.getMonth() + 1);
+  }
+  return date.toISOString().split('T')[0];
+};
+
+// Monthly Trends for Insights
+export const getMonthlyTrends = (monthsBack = 6) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT
+          strftime('%Y-%m', date) as month,
+          SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses,
+          SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income
+         FROM transactions
+         GROUP BY month
+         ORDER BY month DESC
+         LIMIT ?`,
+        [monthsBack],
+        (_, { rows }) => resolve(rows._array.reverse()),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+export const getTopCategoriesBySpending = (limit = 3) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        `SELECT c.name, SUM(t.amount) as total
+         FROM transactions t
+         JOIN categories c ON t.category_id = c.id
+         WHERE t.type = 'expense'
+         GROUP BY c.name
+         ORDER BY total DESC
+         LIMIT ?`,
+        [limit],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
+
+// Category Management
+export const addCategory = (name, monthlyBudget) => {
+  return new Promise((resolve, reject) => {
+    const database = getDatabase();
+    database.transaction((tx) => {
+      tx.executeSql(
+        'INSERT INTO categories (name, monthly_budget) VALUES (?, ?)',
+        [name, monthlyBudget],
+        (_, result) => resolve(result),
+        (_, error) => reject(error)
+      );
+    });
+  });
+};
