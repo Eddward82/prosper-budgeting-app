@@ -32,3 +32,6 @@ logs
 # Database
 *.db
 *.db-journal
+
+# Firebase config
+google-services.json
