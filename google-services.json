@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "683993869050",
+    "project_id": "trusty-pixel-379821",
+    "storage_bucket": "trusty-pixel-379821.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:683993869050:android:abdcf744ca1f3d763af743",
+        "android_client_info": {
+          "package_name": "com.prosper.budgetplanner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "683993869050-fkpacrv2jj4s3pb3n6mmnjc2k4dqqqss.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.prosper.budgetplanner",
+            "certificate_hash": "85648934ba7f560901f8534ea4514ac1e3b50d14"
+          }
+        },
+        {
+          "client_id": "683993869050-jcoic236u54abibqggrtmco1sbl8kl4r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.prosper.budgetplanner",
+            "certificate_hash": "35336df2907c85f18fa3489c33dd83045685a9a1"
+          }
+        },
+        {
+          "client_id": "683993869050-bhp109ibd5t2j45ll4l826r67hsm3cih.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCcTB8GMGhql3blvz4VAiLCvedVNdz15RI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "683993869050-bhp109ibd5t2j45ll4l826r67hsm3cih.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
