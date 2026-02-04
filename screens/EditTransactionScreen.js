@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useBudgetStore from '../store/useBudgetStore';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 import { formatDateInput } from '../utils/date';
+import { parseAmount, sanitizeAmountInput } from '../utils/helpers';
 
 const EditTransactionScreen = ({ route, navigation }) => {
   const { transaction } = route.params;
@@ -80,7 +81,8 @@ const EditTransactionScreen = ({ route, navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
+    const parsedAmount = parseAmount(amount);
+    if (!amount || parsedAmount <= 0) {
       Alert.alert('Validation Error', 'Please enter a valid amount greater than 0');
       return;
     }
@@ -108,7 +110,7 @@ const EditTransactionScreen = ({ route, navigation }) => {
         transaction.id,
         type,
         type === 'expense' ? selectedCategory : null,
-        parseFloat(amount),
+        parsedAmount,
         date,
         tags.trim() || null,
         transaction.receipt_uri,
@@ -172,7 +174,7 @@ const EditTransactionScreen = ({ route, navigation }) => {
           placeholder="0.00"
           keyboardType="decimal-pad"
           value={amount}
-          onChangeText={(text) => setAmount(text.replace(/,/g, ''))}
+          onChangeText={(text) => setAmount(sanitizeAmountInput(text))}
         />
 
         {type === 'expense' && (
