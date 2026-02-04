@@ -19,6 +19,7 @@ import {
   getSpendingByDateRange,
   processRecurringTransactions,
   addCategory as dbAddCategory,
+  deleteCategory as dbDeleteCategory,
   getMonthlyTrends
 } from '../database/db';
 import { removeDuplicateCategories } from '../database/fixDuplicates';
@@ -489,6 +490,21 @@ const useBudgetStore = create((set, get) => ({
       get().autoSyncToCloud();
     } catch (error) {
       console.error('Error adding category:', error);
+      throw error;
+    }
+  },
+
+  deleteCategory: async (id) => {
+    try {
+      await dbDeleteCategory(id);
+      await get().loadCategories();
+      await get().loadTransactions();
+      await get().refreshDashboard();
+
+      // Auto-sync to cloud
+      get().autoSyncToCloud();
+    } catch (error) {
+      console.error('Error deleting category:', error);
       throw error;
     }
   },

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Prosper",
     "slug": "prosper-budget-planner",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +24,7 @@
         "backgroundColor": "#F5F7FA"
       },
       "package": "com.prosper.budgetplanner",
-      "versionCode": 8,
+      "versionCode": 9,
       "googleServicesFile": "./google-services.json"
     },
     "web": {

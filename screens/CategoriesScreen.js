@@ -15,7 +15,7 @@ import CategoryItem from '../components/CategoryItem';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 
 const CategoriesScreen = () => {
-  const { categories, selectedCurrency, updateCategoryBudget, toggleCategoryExcludeFromLimits, addCategory, isPremium } = useBudgetStore();
+  const { categories, selectedCurrency, updateCategoryBudget, toggleCategoryExcludeFromLimits, addCategory, deleteCategory, isPremium } = useBudgetStore();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -51,6 +51,33 @@ const CategoriesScreen = () => {
       Alert.alert('Error', 'Failed to update budget. Please try again.');
       console.error('Update budget error:', error);
     }
+  };
+
+  const handleDeleteCategory = () => {
+    Alert.alert(
+      'Delete Category',
+      `Are you sure you want to delete "${selectedCategory?.name}"? Any transactions in this category will be uncategorized.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCategory(selectedCategory.id);
+              Alert.alert('Success', `Category "${selectedCategory.name}" deleted successfully`);
+              setModalVisible(false);
+              setSelectedCategory(null);
+              setNewBudget('');
+              setExcludeFromLimits(false);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete category. Please try again.');
+              console.error('Delete category error:', error);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleAddCategory = async () => {
@@ -151,6 +178,13 @@ const CategoriesScreen = () => {
                 thumbColor={excludeFromLimits ? '#FFFFFF' : '#F4F3F4'}
               />
             </View>
+
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDeleteCategory}
+            >
+              <Text style={styles.deleteButtonText}>Delete Category</Text>
+            </TouchableOpacity>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -389,6 +423,18 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textLight,
     lineHeight: 16
+  },
+  deleteButton: {
+    backgroundColor: colors.expense,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    marginTop: spacing.lg
+  },
+  deleteButtonText: {
+    ...typography.subheading,
+    color: '#FFFFFF',
+    fontWeight: 'bold'
   }
 });
 

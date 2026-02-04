@@ -20,6 +20,7 @@ import pdfExportService from '../services/pdfExportService';
 import CurrencySelector from '../components/CurrencySelector';
 import { getColors, spacing, borderRadius, shadows } from '../styles/theme';
 import { currencies } from '../utils/currencies';
+import { parseAmount, sanitizeAmountInput } from '../utils/helpers';
 
 const SettingsScreen = ({ navigation }) => {
   const {
@@ -191,13 +192,13 @@ const SettingsScreen = ({ navigation }) => {
             placeholder="0"
             keyboardType="decimal-pad"
             value={newDailyLimit}
-            onChangeText={setNewDailyLimit}
+            onChangeText={(text) => setNewDailyLimit(sanitizeAmountInput(text))}
           />
           <TouchableOpacity
             style={styles.saveLimitButton}
             onPress={async () => {
-              const limit = parseFloat(newDailyLimit);
-              if (isNaN(limit) || limit < 0) {
+              const limit = parseAmount(newDailyLimit);
+              if (limit < 0) {
                 Alert.alert('Validation Error', 'Please enter a valid amount (0 or greater)');
                 return;
               }
@@ -221,13 +222,13 @@ const SettingsScreen = ({ navigation }) => {
             placeholder="0"
             keyboardType="decimal-pad"
             value={newWeeklyLimit}
-            onChangeText={setNewWeeklyLimit}
+            onChangeText={(text) => setNewWeeklyLimit(sanitizeAmountInput(text))}
           />
           <TouchableOpacity
             style={styles.saveLimitButton}
             onPress={async () => {
-              const limit = parseFloat(newWeeklyLimit);
-              if (isNaN(limit) || limit < 0) {
+              const limit = parseAmount(newWeeklyLimit);
+              if (limit < 0) {
                 Alert.alert('Validation Error', 'Please enter a valid amount (0 or greater)');
                 return;
               }

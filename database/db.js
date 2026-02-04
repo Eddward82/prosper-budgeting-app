@@ -112,6 +112,14 @@ export const deleteTransaction = async (id) => {
   return await db.runAsync('DELETE FROM transactions WHERE id = ?', [id]);
 };
 
+export const deleteCategory = async (id) => {
+  const db = await getDatabase();
+  // First, update any transactions using this category to have null category_id
+  await db.runAsync('UPDATE transactions SET category_id = NULL WHERE category_id = ?', [id]);
+  // Then delete the category
+  return await db.runAsync('DELETE FROM categories WHERE id = ?', [id]);
+};
+
 export const clearAllData = async () => {
   const db = await getDatabase();
   await db.runAsync('DELETE FROM transactions');
