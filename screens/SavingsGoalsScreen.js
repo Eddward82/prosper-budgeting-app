@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import useBudgetStore from '../store/useBudgetStore';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
-import { formatCurrency, calculatePercentage } from '../utils/helpers';
+import { formatCurrency, calculatePercentage, parseAmount, sanitizeAmountInput } from '../utils/helpers';
 import { formatDate } from '../utils/date';
 
 const SavingsGoalsScreen = () => {
@@ -70,7 +70,8 @@ const SavingsGoalsScreen = () => {
       return;
     }
 
-    if (!targetAmount || parseFloat(targetAmount) <= 0) {
+    const parsedTargetAmount = parseAmount(targetAmount);
+    if (parsedTargetAmount <= 0) {
       Alert.alert('Validation Error', 'Please enter a valid target amount greater than 0');
       return;
     }
@@ -82,13 +83,13 @@ const SavingsGoalsScreen = () => {
         const { updateGoal } = useBudgetStore.getState();
         await updateGoal(selectedGoal.id, {
           name: goalName.trim(),
-          target_amount: parseFloat(targetAmount),
+          target_amount: parsedTargetAmount,
           deadline: deadline || null
         });
         Alert.alert('Success', 'Goal updated successfully');
       } else {
         // Create new goal
-        await addSavingsGoal(goalName.trim(), parseFloat(targetAmount), deadline || null);
+        await addSavingsGoal(goalName.trim(), parsedTargetAmount, deadline || null);
         Alert.alert('Success', 'Savings goal created successfully');
       }
       setModalVisible(false);
@@ -115,14 +116,15 @@ const SavingsGoalsScreen = () => {
   };
 
   const handleContribute = async () => {
-    if (!contributionAmount || parseFloat(contributionAmount) <= 0) {
+    const parsedContribution = parseAmount(contributionAmount);
+    if (parsedContribution <= 0) {
       Alert.alert('Validation Error', 'Please enter a valid contribution amount greater than 0');
       return;
     }
 
     setIsSaving(true);
     try {
-      await updateGoalProgress(selectedGoal.id, parseFloat(contributionAmount));
+      await updateGoalProgress(selectedGoal.id, parsedContribution);
       setContributeModalVisible(false);
       setContributionAmount('');
       setSelectedGoal(null);
@@ -303,7 +305,7 @@ const SavingsGoalsScreen = () => {
               placeholder="0.00"
               keyboardType="decimal-pad"
               value={targetAmount}
-              onChangeText={setTargetAmount}
+              onChangeText={(text) => setTargetAmount(sanitizeAmountInput(text))}
             />
 
             <Text style={styles.label}>Deadline (Optional)</Text>
@@ -366,7 +368,7 @@ const SavingsGoalsScreen = () => {
               placeholder="0.00"
               keyboardType="decimal-pad"
               value={contributionAmount}
-              onChangeText={setContributionAmount}
+              onChangeText={(text) => setContributionAmount(sanitizeAmountInput(text))}
             />
 
             <View style={styles.modalButtons}>

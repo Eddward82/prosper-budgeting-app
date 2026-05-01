@@ -109,6 +109,12 @@ const EmailVerificationScreen = ({ navigation }) => {
             </Text>
           </View>
           <View style={styles.instructionItem}>
+            <Ionicons name="warning-outline" size={24} color="#F59E0B" />
+            <Text style={styles.instructionText}>
+              Can't find it? <Text style={styles.highlightText}>Check your Spam or Junk folder</Text> — verification emails sometimes land there
+            </Text>
+          </View>
+          <View style={styles.instructionItem}>
             <Ionicons name="checkmark-circle-outline" size={24} color={colors.primary} />
             <Text style={styles.instructionText}>
               Click the link to verify your email address
@@ -167,7 +173,7 @@ const EmailVerificationScreen = ({ navigation }) => {
       <View style={styles.footer}>
         <Ionicons name="information-circle-outline" size={16} color={colors.textLight} />
         <Text style={styles.footerText}>
-          Didn't receive the email? Check your spam folder or resend it.
+          Didn't receive the email? Check your Spam or Junk folder first — it may have been filtered. If still not found, tap "Resend".
         </Text>
       </View>
     </View>
@@ -298,6 +304,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
     lineHeight: 18
+  },
+  highlightText: {
+    fontWeight: 'bold',
+    color: '#F59E0B'
   }
 });
 

@@ -589,7 +589,7 @@ const SettingsScreen = ({ navigation }) => {
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.infoCard}>
           <Text style={styles.appName}>Prosper</Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.version}>Version 1.0.5</Text>
           <Text style={styles.description}>
             Your personal budget planner to help you prosper financially.
             Track your income, expenses, and achieve your financial goals.

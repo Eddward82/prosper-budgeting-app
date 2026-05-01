@@ -16,6 +16,7 @@ import useBudgetStore from '../store/useBudgetStore';
 import CurrencySelector from '../components/CurrencySelector';
 import { currencies } from '../utils/currencies';
 import { colors, spacing, borderRadius, shadows } from '../styles/theme';
+import { parseAmount, sanitizeAmountInput } from '../utils/helpers';
 
 // Feature Card Component - moved outside main component
 const FeatureCard = ({ icon, title, description, index }) => {
@@ -312,17 +313,20 @@ const OnboardingScreen = ({ navigation }) => {
     try {
       await setCurrency(selectedCurrency);
 
-      if (dailyLimit && parseFloat(dailyLimit) > 0) {
-        await setDailyLimit(parseFloat(dailyLimit));
+      const parsedDailyLimit = parseAmount(dailyLimit);
+      if (parsedDailyLimit > 0) {
+        await setDailyLimit(parsedDailyLimit);
       }
-      if (weeklyLimit && parseFloat(weeklyLimit) > 0) {
-        await setWeeklyLimit(parseFloat(weeklyLimit));
+      const parsedWeeklyLimit = parseAmount(weeklyLimit);
+      if (parsedWeeklyLimit > 0) {
+        await setWeeklyLimit(parsedWeeklyLimit);
       }
 
       const { addSavingsGoal } = useBudgetStore.getState();
       for (const goal of savingsGoals) {
-        if (goal.name && goal.name.trim() && goal.targetAmount && parseFloat(goal.targetAmount) > 0) {
-          await addSavingsGoal(goal.name.trim(), parseFloat(goal.targetAmount));
+        const parsedTargetAmount = parseAmount(goal.targetAmount);
+        if (goal.name && goal.name.trim() && parsedTargetAmount > 0) {
+          await addSavingsGoal(goal.name.trim(), parsedTargetAmount);
         }
       }
 
@@ -642,7 +646,7 @@ const OnboardingScreen = ({ navigation }) => {
                       placeholderTextColor={colors.textLight}
                       keyboardType="decimal-pad"
                       value={goal.targetAmount}
-                      onChangeText={(value) => updateGoal(goal.id, 'targetAmount', value)}
+                      onChangeText={(value) => updateGoal(goal.id, 'targetAmount', sanitizeAmountInput(value))}
                     />
                   </View>
                 </View>
@@ -721,7 +725,7 @@ const OnboardingScreen = ({ navigation }) => {
                   placeholderTextColor={colors.textLight}
                   keyboardType="decimal-pad"
                   value={dailyLimit}
-                  onChangeText={setDailyLimitValue}
+                  onChangeText={(text) => setDailyLimitValue(sanitizeAmountInput(text))}
                 />
               </View>
               <Text style={styles.limitHint}>Maximum you want to spend per day</Text>
@@ -740,7 +744,7 @@ const OnboardingScreen = ({ navigation }) => {
                   placeholderTextColor={colors.textLight}
                   keyboardType="decimal-pad"
                   value={weeklyLimit}
-                  onChangeText={setWeeklyLimitValue}
+                  onChangeText={(text) => setWeeklyLimitValue(sanitizeAmountInput(text))}
                 />
               </View>
               <Text style={styles.limitHint}>Maximum you want to spend per week</Text>

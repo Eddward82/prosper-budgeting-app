@@ -50,7 +50,7 @@ const AddTransactionScreen = ({ navigation }) => {
     }
 
     try {
-      const budget = newCategoryBudget ? parseFloat(newCategoryBudget) : 0;
+      const budget = newCategoryBudget ? parseAmount(newCategoryBudget) : 0;
       await addCategory(newCategoryName.trim(), budget, false);
 
       // Get updated categories from store to find the new one
@@ -362,7 +362,7 @@ const AddTransactionScreen = ({ navigation }) => {
                 placeholderTextColor={colors.textLight}
                 keyboardType="decimal-pad"
                 value={newCategoryBudget}
-                onChangeText={setNewCategoryBudget}
+                onChangeText={(text) => setNewCategoryBudget(sanitizeAmountInput(text))}
               />
             </View>
             <Text style={styles.modalHint}>You can set or change the budget later in Categories</Text>

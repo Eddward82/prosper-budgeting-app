@@ -13,6 +13,7 @@ import {
 import useBudgetStore from '../store/useBudgetStore';
 import CategoryItem from '../components/CategoryItem';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
+import { parseAmount, sanitizeAmountInput } from '../utils/helpers';
 
 const CategoriesScreen = () => {
   const { categories, selectedCurrency, updateCategoryBudget, toggleCategoryExcludeFromLimits, addCategory, deleteCategory, isPremium } = useBudgetStore();
@@ -34,13 +35,14 @@ const CategoriesScreen = () => {
   };
 
   const handleUpdateBudget = async () => {
-    if (!newBudget || parseFloat(newBudget) < 0) {
+    const parsedBudget = parseAmount(newBudget);
+    if (parsedBudget < 0) {
       Alert.alert('Validation Error', 'Please enter a valid budget amount (must be 0 or greater)');
       return;
     }
 
     try {
-      await updateCategoryBudget(selectedCategory.id, parseFloat(newBudget));
+      await updateCategoryBudget(selectedCategory.id, parsedBudget);
       await toggleCategoryExcludeFromLimits(selectedCategory.id, excludeFromLimits);
       Alert.alert('Success', `Budget for ${selectedCategory.name} updated successfully`);
       setModalVisible(false);
@@ -91,13 +93,14 @@ const CategoriesScreen = () => {
       return;
     }
 
-    if (!newCategoryBudget || parseFloat(newCategoryBudget) < 0) {
+    const parsedCategoryBudget = parseAmount(newCategoryBudget);
+    if (parsedCategoryBudget < 0) {
       Alert.alert('Validation Error', 'Please enter a valid budget amount (must be 0 or greater)');
       return;
     }
 
     try {
-      await addCategory(newCategoryName.trim(), parseFloat(newCategoryBudget), newCategoryExcludeFromLimits);
+      await addCategory(newCategoryName.trim(), parsedCategoryBudget, newCategoryExcludeFromLimits);
       Alert.alert('Success', `Category "${newCategoryName.trim()}" added successfully`);
       setAddModalVisible(false);
       setNewCategoryName('');
@@ -161,7 +164,7 @@ const CategoriesScreen = () => {
               placeholder="0.00"
               keyboardType="decimal-pad"
               value={newBudget}
-              onChangeText={setNewBudget}
+              onChangeText={(text) => setNewBudget(sanitizeAmountInput(text))}
             />
 
             <View style={styles.switchContainer}>
@@ -241,7 +244,7 @@ const CategoriesScreen = () => {
               placeholder="0.00"
               keyboardType="decimal-pad"
               value={newCategoryBudget}
-              onChangeText={setNewCategoryBudget}
+              onChangeText={(text) => setNewCategoryBudget(sanitizeAmountInput(text))}
             />
 
             <View style={styles.switchContainer}>
