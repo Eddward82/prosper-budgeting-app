@@ -24,7 +24,7 @@
         "backgroundColor": "#F5F7FA"
       },
       "package": "com.prosper.budgetplanner",
-      "versionCode": 15,
+      "versionCode": 16,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
