@@ -97,6 +97,15 @@ class AuthService {
       // Check if device supports Google Play Services
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
+      // Sign out of any cached Google session first so the account picker is
+      // always shown. Without this, Google silently reuses the last-used
+      // account and the user can't choose a different one.
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        console.log('No existing Google session to clear before sign-in');
+      }
+
       // Get user info from Google
       const response = await GoogleSignin.signIn();
 
@@ -181,6 +190,11 @@ class AuthService {
         try {
           const isSignedIn = await GoogleSignin.isSignedIn();
           if (isSignedIn) {
+            // revokeAccess() forces the account picker to appear on the next
+            // sign-in. signOut() alone keeps the account linked to the app, so
+            // Google silently reuses the last account instead of letting the
+            // user choose a different one.
+            await GoogleSignin.revokeAccess();
             await GoogleSignin.signOut();
           }
         } catch (error) {
@@ -375,9 +389,12 @@ class AuthService {
       // Delete user account
       await deleteUser(user);
 
-      // Sign out from Google if applicable
+      // Sign out from Google if applicable. Revoke access too so the deleted
+      // account isn't silently reused on the next sign-in and the user is shown
+      // the account picker.
       if (isGoogleUser && GoogleSignin) {
         try {
+          await GoogleSignin.revokeAccess();
           await GoogleSignin.signOut();
         } catch (error) {
           console.log('Google Sign-In not available during account deletion');

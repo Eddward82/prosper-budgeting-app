@@ -334,10 +334,30 @@ const useBudgetStore = create((set, get) => ({
         return false;
       }
 
-      // Only return true if onboarding was completed AND it was completed by the current user
-      const result = completed === '1' && completedUserId === currentUser.uid;
-      console.log('Onboarding check result:', result);
-      return result;
+      // Return true if onboarding was completed locally by the current user.
+      const completedLocally = completed === '1' && completedUserId === currentUser.uid;
+      if (completedLocally) {
+        return true;
+      }
+
+      // Onboarding state is stored only in local SQLite, so it is lost on reset
+      // or reinstall. A user who already has a cloud backup has clearly onboarded
+      // before — treat them as completed and heal the local flags so we don't
+      // wrongly send returning users through onboarding again.
+      try {
+        const hasBackup = await cloudSyncService.hasCloudBackup(currentUser.uid);
+        if (hasBackup) {
+          console.log('Cloud backup exists, treating onboarding as completed');
+          await setSetting('onboarding_completed', '1');
+          await setSetting('onboarding_user_id', currentUser.uid);
+          return true;
+        }
+      } catch (backupError) {
+        console.warn('Could not check cloud backup for onboarding:', backupError);
+      }
+
+      console.log('Onboarding not completed for user:', currentUser.uid);
+      return false;
     } catch (error) {
       console.error('Error checking onboarding:', error);
       return false;
