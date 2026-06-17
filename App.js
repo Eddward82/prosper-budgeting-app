@@ -30,6 +30,14 @@ import authService from './services/authService';
 import revenueCatService from './services/revenueCatService';
 import { getColors } from './styles/theme';
 
+// Silence verbose logging in production builds. console.error is kept so real
+// crashes still surface in crash reporting; only the noisy log/warn chatter is
+// stripped from release builds.
+if (typeof __DEV__ !== 'undefined' && !__DEV__) {
+  console.log = () => {};
+  console.warn = () => {};
+}
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -123,6 +131,15 @@ export default function App() {
   // Use ref to track last checked user - prevents state update timing issues
   const lastCheckedUserIdRef = useRef(null);
 
+  // Track the latest user without forcing the auth listener to re-subscribe.
+  // The listener is set up once (empty deps); reading user through this ref
+  // avoids tearing down and recreating the Firebase subscription on every
+  // login/logout/refresh.
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   useEffect(() => {
     // Initialize theme on app start
     initializeTheme();
@@ -131,11 +148,11 @@ export default function App() {
 
     // Auth state listener
     const unsubscribe = authService.onAuthStateChanged(async (newUser) => {
-      const currentUser = user;
+      const currentUser = userRef.current;
 
       if (newUser) {
         // Import database functions
-        const { getSetting, setSetting, clearAllData } = await import('./database/db');
+        const { getSetting, setSetting, clearAllData, getAllCategories, getAllTransactions } = await import('./database/db');
         const dbOwnerUid = await getSetting('db_owner_uid');
 
         // Check if we need to reset app data
@@ -151,11 +168,20 @@ export default function App() {
           console.log('Database belongs to different user, resetting app...');
           needsReset = true;
         }
-        // Case 3: No owner set - this is a new user on a device that may have old data
-        // Always reset to ensure clean state for new users
+        // Case 3: No owner set. This happens both for a genuinely new user on a
+        // device with leftover data AND for a legitimate returning user after a
+        // reinstall (fresh, empty DB). Only reset if there is actually leftover
+        // local data to clear — otherwise wiping is pointless and, combined with
+        // the auto-restore below, risks churning the user's own data.
         else if (!dbOwnerUid) {
-          console.log('No database owner set, resetting for new user...');
-          needsReset = true;
+          const existingCategories = await getAllCategories();
+          const existingTransactions = await getAllTransactions();
+          if (existingCategories.length > 0 || existingTransactions.length > 0) {
+            console.log('No database owner set but local data exists, resetting...');
+            needsReset = true;
+          } else {
+            console.log('No database owner set and DB is empty, claiming ownership without reset');
+          }
         }
 
         // Reset app if needed - clear database directly before setting user
@@ -209,7 +235,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     const initialize = async () => {
@@ -226,6 +252,27 @@ export default function App() {
           lastCheckedUserIdRef.current = user.uid;
 
           await initializeApp();
+
+          // Auto-restore from cloud for returning users whose local data is
+          // empty (e.g. after a reinstall or a reset). Without this, a user
+          // with a cloud backup would be left staring at an empty app and would
+          // have to know to manually tap "Restore" in Settings.
+          try {
+            const store = useBudgetStore.getState();
+            const localIsEmpty =
+              store.transactions.length === 0 && store.categories.length === 0;
+            if (localIsEmpty) {
+              const hasBackup = await store.hasCloudBackup();
+              if (hasBackup) {
+                console.log('Local data empty and cloud backup exists, auto-restoring...');
+                await store.restoreFromCloud();
+                console.log('Auto-restore from cloud completed');
+              }
+            }
+          } catch (restoreError) {
+            console.warn('Auto-restore from cloud failed:', restoreError);
+          }
+
           // Check onboarding using the user object from the effect
           const onboardingCompleted = await useBudgetStore.getState().checkOnboarding();
           console.log('Onboarding completed:', onboardingCompleted, 'for user:', user.uid);
