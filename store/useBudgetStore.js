@@ -11,6 +11,7 @@ import {
   toggleCategoryExcludeFromLimits as dbToggleCategoryExcludeFromLimits,
   getAllSavingsGoals,
   addSavingsGoal as dbAddSavingsGoal,
+  addSavingsGoalWithProgress as dbAddSavingsGoalWithProgress,
   updateGoalProgress as dbUpdateGoalProgress,
   updateGoal as dbUpdateGoal,
   deleteGoal as dbDeleteGoal,
@@ -224,21 +225,6 @@ const useBudgetStore = create((set, get) => ({
     }
   },
 
-  resetApp: async () => {
-    try {
-      set({ isLoading: true });
-      await clearAllData();
-      await get().loadCategories();
-      await get().loadTransactions();
-      await get().refreshDashboard();
-      set({ isLoading: false });
-    } catch (error) {
-      console.error('Error resetting app:', error);
-      set({ isLoading: false });
-      throw error;
-    }
-  },
-
   // Savings Goals
   loadSavingsGoals: async () => {
     try {
@@ -348,10 +334,30 @@ const useBudgetStore = create((set, get) => ({
         return false;
       }
 
-      // Only return true if onboarding was completed AND it was completed by the current user
-      const result = completed === '1' && completedUserId === currentUser.uid;
-      console.log('Onboarding check result:', result);
-      return result;
+      // Return true if onboarding was completed locally by the current user.
+      const completedLocally = completed === '1' && completedUserId === currentUser.uid;
+      if (completedLocally) {
+        return true;
+      }
+
+      // Onboarding state is stored only in local SQLite, so it is lost on reset
+      // or reinstall. A user who already has a cloud backup has clearly onboarded
+      // before — treat them as completed and heal the local flags so we don't
+      // wrongly send returning users through onboarding again.
+      try {
+        const hasBackup = await cloudSyncService.hasCloudBackup(currentUser.uid);
+        if (hasBackup) {
+          console.log('Cloud backup exists, treating onboarding as completed');
+          await setSetting('onboarding_completed', '1');
+          await setSetting('onboarding_user_id', currentUser.uid);
+          return true;
+        }
+      } catch (backupError) {
+        console.warn('Could not check cloud backup for onboarding:', backupError);
+      }
+
+      console.log('Onboarding not completed for user:', currentUser.uid);
+      return false;
     } catch (error) {
       console.error('Error checking onboarding:', error);
       return false;
@@ -638,19 +644,30 @@ const useBudgetStore = create((set, get) => ({
       const result = await cloudSyncService.restoreFromCloud(state.user.uid);
 
       if (result.success && result.data) {
-        // Import categories
+        // Import categories and build a map from old cloud IDs to new local IDs
+        const categoryIdMap = {}; // { oldCloudId: newLocalId }
         if (result.data.categories && result.data.categories.length > 0) {
           for (const category of result.data.categories) {
-            await dbAddCategory(category.name, category.monthly_budget || 0, category.exclude_from_limits || false);
+            const insertResult = await dbAddCategory(
+              category.name,
+              category.monthly_budget || 0,
+              category.exclude_from_limits || false
+            );
+            if (category.id != null && insertResult?.lastInsertRowId) {
+              categoryIdMap[category.id] = insertResult.lastInsertRowId;
+            }
           }
         }
 
-        // Import transactions
+        // Import transactions, remapping category_id from old cloud IDs to new local IDs
         if (result.data.transactions && result.data.transactions.length > 0) {
           for (const transaction of result.data.transactions) {
+            const remappedCategoryId = transaction.category_id != null
+              ? (categoryIdMap[transaction.category_id] ?? null)
+              : null;
             await dbAddTransaction(
               transaction.type,
-              transaction.category_id,
+              remappedCategoryId,
               transaction.amount,
               transaction.date,
               transaction.tags,
@@ -663,10 +680,17 @@ const useBudgetStore = create((set, get) => ({
           }
         }
 
-        // Import savings goals
+        // Import savings goals, preserving their saved progress and deadline.
+        // (dbAddSavingsGoal hardcodes current_amount to 0 and only accepts a
+        // deadline as its 3rd arg, so it would silently drop progress here.)
         if (result.data.savingsGoals && result.data.savingsGoals.length > 0) {
           for (const goal of result.data.savingsGoals) {
-            await dbAddSavingsGoal(goal.name, goal.target_amount, goal.current_amount, goal.deadline);
+            await dbAddSavingsGoalWithProgress(
+              goal.name,
+              goal.target_amount,
+              goal.current_amount || 0,
+              goal.deadline || null
+            );
           }
         }
 

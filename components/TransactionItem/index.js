@@ -24,7 +24,7 @@ const TransactionItem = ({ transaction, currency }) => {
         <View style={[styles.indicator, { backgroundColor: amountColor }]} />
         <View style={styles.details}>
           <Text style={[styles.category, { color: colors.text }]}>
-            {transaction.category_name || 'Income'}
+            {transaction.category_name || (isIncome ? 'Income' : 'Uncategorized')}
           </Text>
           <Text style={[styles.date, { color: colors.textLight }]}>{formatDate(transaction.date)}</Text>
         </View>

@@ -183,6 +183,16 @@ export const addSavingsGoal = async (name, targetAmount, deadline = null) => {
   );
 };
 
+// Insert a savings goal preserving its existing progress (used when restoring
+// from a cloud backup, where current_amount must not be reset to 0).
+export const addSavingsGoalWithProgress = async (name, targetAmount, currentAmount = 0, deadline = null) => {
+  const db = await getDatabase();
+  return await db.runAsync(
+    'INSERT INTO savings_goals (name, target_amount, current_amount, deadline) VALUES (?, ?, ?, ?)',
+    [name, targetAmount, currentAmount, deadline]
+  );
+};
+
 export const updateGoalProgress = async (id, amount) => {
   const db = await getDatabase();
   return await db.runAsync(
