@@ -579,7 +579,10 @@ const useBudgetStore = create((set, get) => ({
           selectedCurrency: state.selectedCurrency,
           dailyLimit: state.dailyLimit,
           weeklyLimit: state.weeklyLimit,
-          isPremium: state.isPremium,
+          // isPremium is intentionally NOT synced: it's a client-controlled
+          // entitlement flag and must only ever come from RevenueCat, never
+          // from the cloud backup (otherwise a tampered client could grant
+          // itself premium via restore).
           autoSyncEnabled: state.autoSyncEnabled
         }
       };
@@ -613,7 +616,7 @@ const useBudgetStore = create((set, get) => ({
           selectedCurrency: state.selectedCurrency,
           dailyLimit: state.dailyLimit,
           weeklyLimit: state.weeklyLimit,
-          isPremium: state.isPremium,
+          // isPremium is intentionally NOT synced (see syncToCloud above).
           autoSyncEnabled: state.autoSyncEnabled
         }
       };
